@@ -70,45 +70,46 @@ class Differences(wnd, cls):
 
         if grayA.shape != grayB.shape:
             self.popup('Error', 'Images shape is not the same')
+        else:
+            grayA.shape == grayB.shape
+            # compute the Structural Similarity Index (SSIM) between the two
+            # images, ensuring that the difference image is returned
+            global score
+            (score, diff) = compare_ssim(grayA, grayB, full=True)
+            diff = (diff * 255).astype("uint8")
+            print("SSIM: {}".format(score))
+            if 1 == score:
+                self.popup("Error", "Images are the same")
+            # threshold the difference image, followed by finding contours to
+            # obtain the regions of the two input images that differ
+            thresh = cv2.threshold(diff, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
+            cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cnts = imutils.grab_contours(cnts)
 
-        # compute the Structural Similarity Index (SSIM) between the two
-        # images, ensuring that the difference image is returned
-        global score
-        (score, diff) = compare_ssim(grayA, grayB, full=True)
-        diff = (diff * 255).astype("uint8")
-        print("SSIM: {}".format(score))
-        if 1 == score:
-            self.popup("Error", "Images are the same")
-        # threshold the difference image, followed by finding contours to
-        # obtain the regions of the two input images that differ
-        thresh = cv2.threshold(diff, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
-        cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cnts = imutils.grab_contours(cnts)
+            # loop over the contours
+            for c in cnts:
+                # compute the bounding box of the contour and then draw the
+                # bounding box on both input images to represent where the two
+                # images differ
+                (x, y, w, h) = cv2.boundingRect(c)
+                cv2.rectangle(self.imageA, (x, y), (x + w, y + h), (255, 0, 0), 2)
+                cv2.rectangle(self.imageB, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
-        # loop over the contours
-        for c in cnts:
-            # compute the bounding box of the contour and then draw the
-            # bounding box on both input images to represent where the two
-            # images differ
-            (x, y, w, h) = cv2.boundingRect(c)
-            cv2.rectangle(self.imageA, (x, y), (x + w, y + h), (255, 0, 0), 2)
-            cv2.rectangle(self.imageB, (x, y), (x + w, y + h), (255, 0, 0), 2)
+            # convert colours to RGB
+            imageA = cv2.cvtColor(self.imageA, cv2.COLOR_RGB2BGR)
 
-        # convert colours to RGB
-        imageA = cv2.cvtColor(self.imageA, cv2.COLOR_RGB2BGR)
+            cv2.imwrite('Oryginal.jpg', imageA)
 
-        cv2.imwrite('Oryginal.jpg', imageA)
+            pixmap_3 = QPixmap('Oryginal.jpg')
+            self.label.setPixmap(pixmap_3)
+            self.label_3.setText(str(round(score, 2)))
 
-        pixmap_3 = QPixmap('Oryginal.jpg')
-        self.label.setPixmap(pixmap_3)
-        self.label_3.setText(str(round(score, 2)))
+            imageB = cv2.cvtColor(self.imageB, cv2.COLOR_RGB2BGR)
+            cv2.imwrite('Modified.jpg', imageB)
 
-        imageB = cv2.cvtColor(self.imageB, cv2.COLOR_RGB2BGR)
-        cv2.imwrite('Modified.jpg', imageB)
-
-        pixmap_3 = QPixmap('Modified.jpg')
-        self.label_2.setPixmap(pixmap_3)
-        self.label_3.setText(str(round(score, 2)))
+            pixmap_3 = QPixmap('Modified.jpg')
+            self.label_2.setPixmap(pixmap_3)
+            self.label_3.setText(str(round(score, 2)))
 
     def on_pushButton_2_pressed(self):
         self.label.clear()
